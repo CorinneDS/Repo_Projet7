@@ -5,7 +5,7 @@ import pandas as pd
 data = pd.read_csv('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/X_test50.csv')
 
 # Sélectionner une seule ligne à envoyer à l'API (par exemple, la première ligne)
-row_to_send = data.iloc[0].to_dict()
+row_to_send = data.iloc[1].to_dict()
 
 # URL de l'API
 api_url = 'http://127.0.0.1:5000/display_row'
