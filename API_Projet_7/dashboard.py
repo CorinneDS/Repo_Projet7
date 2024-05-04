@@ -4,18 +4,21 @@ import json
 from joblib import load
 import requests
 import shap
+from streamlit_shap import st_shap
 import streamlit as st
+import streamlit.components.v1 as components
 import matplotlib.pyplot as plt
+
 
 # Titres et logo
 def render_title() -> None:
     st.set_page_config(page_title="Dashboard : scoring des candidats à un prêt", page_icon=":bar_chart:",layout="wide")
 
-    col1, col2, col3 = st.columns((3))
+    col1, col2 = st.columns((9,1))
     with col1:
         st.title(":bar_chart: Dashboard")
 
-    with col3:
+    with col2:
         st.image('Logo_projet7.jpg', width=150)
 
 # Texte de presentation
@@ -62,9 +65,9 @@ def pie_chart(response):
     pie_wedge_collection, text_props, autotexts = ax1.pie(sizes, labels=labels, autopct='%1.1f%%',
                                    startangle=90, textprops={'fontsize': 20}) 
     ax1.axis('equal')  # Assure un rapport d'aspect égal pour dessiner un cercle.
-    ax1.set_title('Répartition des prédictions', fontsize=22)  # Ajoute un titre et ajuste la taille
-    legend = ax1.legend(fontsize=20, bbox_to_anchor=(1, 0.5))  # Déplace la légende à l'extérieur et ajuste la taille
-    legend.set_title('Légende', prop={'size': 20}) #title='Légende',
+    ax1.set_title('Répartition des prédictions', fontsize=22)  
+    legend = ax1.legend(fontsize=20, bbox_to_anchor=(1, 0.5))  
+    legend.set_title('Légende', prop={'size': 20}) 
 
     # Ajuste la taille des labels
     for label in ax1.get_xticklabels() + ax1.get_yticklabels():
@@ -72,24 +75,46 @@ def pie_chart(response):
 
     st.pyplot(fig1)
 
+
 if __name__ == "__main__":
     render_title()
     text_pres()
     data = load_data()
+    data_woIndex = data.drop(columns=['SK_ID_CURR'])
     row_to_send = select_candidat()
     response = prediction(row_to_send)
     #st.write("Response pour 0:" , response[0][0])
     #st.write("Response pour 1:" , response[0][1])
     #st.write("Response finale:" , response[1])
-    col1, col2, col3, col4 = st.columns((4))
+    shap_values = load('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/shap_values.joblib')
+    shap_values_tree = load('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/shap_values_Tree.joblib')
+    
+    col1, col2 = st.columns((2,3))
     with col1:
+        st_shap(shap.summary_plot(shap_values, data_woIndex, plot_type="bar"), height=450)
+    with col2:
+        st_shap(shap.plots.waterfall(shap_values[0]), height=400, width=1200)
+
+    col1, col2 = st.columns((2.5,2))
+    with col1:
+        st_shap(shap.plots.bar(shap_values), height=300, width = 1100)
+    with col2:
+        st_shap(shap.plots.beeswarm(shap_values), height=300, width = 900)
+
+    best_model = load('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/model_best_LGBM.sav')
+    explainer = shap.TreeExplainer(best_model)
+    shap_values = explainer.shap_values(data_woIndex)
+
+    st_shap(shap.force_plot(explainer.expected_value, shap_values[0,:], data_woIndex.iloc[0,:]), height=200, width=1800)    
+    st_shap(shap.force_plot(explainer.expected_value, shap_values[:50,:], data_woIndex.iloc[:50,:]), height=400, width=1800)
+
+    col1, col2, col3 = st.columns((1,2,6))
+    with col1:
+       affich_predict_proba(response)
+    with col2:
         pie_chart(response)
 
-    with col2:
-        affich_predict_proba(response)
-
-
-
+    
 
 
 

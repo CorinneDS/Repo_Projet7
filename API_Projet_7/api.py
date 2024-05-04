@@ -18,7 +18,7 @@ def index():
     print(last_row_str)
 
     # Afficher la dernière ligne dans le navigateur
-    return jsonify(f"<h1>Dernière ligne reçue :</h1><p>{last_row_str}</p>")
+    return jsonify(f"<h1>Derniere ligne recue :</h1><p>{last_row_str}</p>")
 
 # Route pour afficher le resultat de la prediction
 @app.route('/prediction', methods=['POST'])
@@ -34,10 +34,19 @@ def prediction():
         # Convertir le dictionnaire en DataFrame Pandas
         df = pd.DataFrame([row_data])
     
-        prediction = best_model.predict(df)
+        prediction = best_model.predict_proba(df)
+        prediction_finale = best_model.predict(df)
+
+        combined_predictions = []
+
+        # Ajouter les résultats de prediction à la liste combinée
+        combined_predictions.extend(prediction.tolist())
+
+        # Ajouter les résultats de prediction_finale à la liste combinée
+        combined_predictions.extend(prediction_finale.tolist())
 
         # Retourner le résultat de la prédiction
-        return jsonify({'prediction': prediction.tolist()})
+        return jsonify({'prediction': combined_predictions})
     else:
         # Retourner un message d'erreur si le format n'est pas correct
         return jsonify({'error': 'Le format des données envoyées est incorrect. Assurez-vous d\'envoyer un objet JSON contenant les données de la ligne à prédire.'}), 400
