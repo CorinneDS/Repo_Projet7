@@ -25,13 +25,18 @@ def render_title() -> None:
         st.image('Logo_projet7.jpg', width=150)
 
 
-# Chargement les données
+# Chargement des données
 def load_data():
     data = pd.read_csv('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/X_test50_withIndex.csv')
 
     # Convertir les ID clients en entiers
     data['SK_ID_CURR'] = data['SK_ID_CURR'].astype(int)
     return data
+
+# Chargement du glossaire des principales features
+def load_glossaire():
+    glossaire = pd.read_excel('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/Glossaire.xlsx', index_col=None)
+    return glossaire
 
 # Selection du candidat dans liste deroulante et formattage attendu par API
 def select_candidat():
@@ -56,12 +61,12 @@ def affich_predict(response):
     prediction = response[1]
     if prediction == 1:
         st.markdown(
-            f"<h3 style='font-weight: bold; font-size: 24px; color: red;'>Demande de crédit refusée</h3>", 
+            "<h3 style='font-weight: bold; font-size: 24px; color: red;'>Demande de crédit refusée</h3>", 
             unsafe_allow_html=True
         )
     else:
         st.markdown(
-            f"<h3 style='font-weight: bold; font-size: 24px; color: green;'>Demande de crédit accordée</h3>", 
+            "<h3 style='font-weight: bold; font-size: 24px; color: green;'>Demande de crédit accordée</h3>", 
             unsafe_allow_html=True
         )
 
@@ -112,15 +117,14 @@ def box_plot(top_features,selected_index):
 if __name__ == "__main__":
     render_title()
     data = load_data()
+    glossaire = load_glossaire()
     data_woIndex = data.drop(columns=['SK_ID_CURR'])
     row_to_send = select_candidat()
     response = prediction(row_to_send)
     affich_predict(response)
+
     # Obtenir l'index du candidat sélectionné
     selected_index = data_woIndex[data_woIndex.eq(pd.Series(row_to_send)).all(axis=1)].index[0]
-    #st.write("selected_index :" , selected_index)
-    #st.write("Response pour 1:" , response[0][1])
-    #st.write("Response finale:" , response[1])
 
     shap_values = load('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/shap_values.joblib')
     shap_data = load('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/shap_data.joblib')
@@ -132,7 +136,7 @@ if __name__ == "__main__":
         affich_predict_proba(response)
     with col2:
         st.markdown(
-            f"<h4 style='font-weight: normal; font-size: 24px;'>Force Plot :</h4>", 
+            "<h4 style='font-weight: normal; font-size: 24px;'>Force Plot :</h4>", 
             unsafe_allow_html=True
         )
         st.markdown(
@@ -146,7 +150,7 @@ if __name__ == "__main__":
         #st.markdown("<br>", unsafe_allow_html=True)
         #st_shap(shap.summary_plot(shap_values, data_woIndex, plot_type="bar"), height=450)
         st.markdown(
-            f"<h4 style='font-weight: normal; font-size: 24px;'>Waterfall Plot :</h4>", 
+            "<h4 style='font-weight: normal; font-size: 24px;'>Waterfall Plot :</h4>", 
             unsafe_allow_html=True
         )
         st.markdown(
@@ -156,7 +160,7 @@ if __name__ == "__main__":
         st_shap(shap.plots.waterfall(shap_values[selected_index]), height=400, width=1200)
     with col2:
         st.markdown(
-            f"<h4 style='font-weight: normal; font-size: 24px;'>Decision Plot :</h4>", 
+            "<h4 style='font-weight: normal; font-size: 24px;'>Decision Plot :</h4>", 
             unsafe_allow_html=True
         )
         st.markdown(
@@ -168,7 +172,7 @@ if __name__ == "__main__":
     col1, col2 = st.columns((2.5,2))
     with col1:
         st.markdown(
-            f"<h4 style='font-weight: normal; font-size: 24px;'>Graphique des barres SHAP :</h4>", 
+            "<h4 style='font-weight: normal; font-size: 24px;'>Graphique des barres SHAP :</h4>", 
             unsafe_allow_html=True
         )
         st.markdown(
@@ -180,7 +184,7 @@ if __name__ == "__main__":
         st_shap(shap.plots.bar(shap_values), height=300, width = 1100)
     with col2:
         st.markdown(
-            f"<h4 style='font-weight: normal; font-size: 24px;'>Graphique en essaim SHAP :</h4>", 
+            "<h4 style='font-weight: normal; font-size: 24px;'>Graphique en essaim SHAP :</h4>", 
             unsafe_allow_html=True
         )
         st.markdown(
@@ -194,7 +198,7 @@ if __name__ == "__main__":
     col1, col2 = st.columns(2)    
     with col1:
         st.markdown(
-            f"<h4 style='font-weight: normal; font-size: 24px;'>Boites à moustaches des top 5 features :</h4>", 
+            "<h4 style='font-weight: normal; font-size: 24px;'>Boites à moustaches des top 5 features :</h4>", 
             unsafe_allow_html=True
         )
         st.markdown(
@@ -204,6 +208,19 @@ if __name__ == "__main__":
         unsafe_allow_html=True
         )
         box_plot(top_features, selected_index)
+    
+    col1, col2 = st.columns((3,2))    
+    with col1:
+        st.markdown(
+            "<h4 style='font-weight: normal; font-size: 24px;'>Glossaire des features les plus importantes :</h4>", 
+            unsafe_allow_html=True
+        )
+        st.dataframe(glossaire, hide_index=True, use_container_width=True)
+
+
+
+
+
 
 
 
