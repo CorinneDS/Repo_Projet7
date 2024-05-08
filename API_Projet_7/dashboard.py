@@ -8,7 +8,7 @@ from streamlit_shap import st_shap
 import streamlit as st
 import streamlit.components.v1 as components
 import matplotlib.pyplot as plt
-
+import seaborn as sns
 
 # Titres et logo
 def render_title() -> None:
@@ -17,13 +17,13 @@ def render_title() -> None:
     col1, col2 = st.columns((9,1))
     with col1:
         st.title(":bar_chart: Dashboard")
-
+        st.markdown(
+            "<h5 style='font-weight: normal; font-size: 24px;'>Ce tableau de bord permet d'afficher le scoring en % de chaque candidat au prêt.<br>Il affiche egalement les criteres qui ont conduit à ce resultat.</h5><br>", 
+            unsafe_allow_html=True
+        )
     with col2:
         st.image('Logo_projet7.jpg', width=150)
 
-# Texte de presentation
-def text_pres() -> None:
-    st.text('Texte de presentation du dashboard à rediger une fois celui-ci terminé.')
 
 # Chargement les données
 def load_data():
@@ -39,7 +39,7 @@ def select_candidat():
     candidat = st.sidebar.selectbox("Choisir le candidat au prêt :", data['SK_ID_CURR'].unique())
     df = data.loc[data['SK_ID_CURR']==candidat]
     df = df.drop(columns=['SK_ID_CURR'])
-    df_dict = df.to_dict(orient='records')[0]
+    df_dict = df.to_dict(orient='records')[0] #transform en format json
     return df_dict
 
 # Appel a l'API pour obtenir la prédiction
@@ -50,6 +50,20 @@ def prediction(row):
     response_data = json.loads(response.text)
     prediction_values = response_data["prediction"]
     return prediction_values
+
+# Affichage du resultat de la prediction
+def affich_predict(response):
+    prediction = response[1]
+    if prediction == 1:
+        st.markdown(
+            f"<h3 style='font-weight: bold; font-size: 24px; color: red;'>Demande de crédit refusée</h3>", 
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            f"<h3 style='font-weight: bold; font-size: 24px; color: green;'>Demande de crédit accordée</h3>", 
+            unsafe_allow_html=True
+        )
 
 # Affichage de la probabilite de remboursement
 def affich_predict_proba(response):
@@ -75,110 +89,123 @@ def pie_chart(response):
 
     st.pyplot(fig1)
 
+def box_plot(top_features,selected_index):
+    # Créer un sous-ensemble de données avec les top_features
+    sub_data = data_woIndex[top_features]
+
+    # Normaliser les données pour les mettre sur une échelle comparable
+    scaled_data = (sub_data - sub_data.mean()) / sub_data.std()
+
+    # Tracer le box plot avec des échelles différentes pour chaque axe y
+    plt.figure(figsize=(10, 6))
+    ax = sns.boxplot(data=scaled_data, ax=plt.gca(), orient='h')
+    ax.set_ylabel('Top 5 variables')
+    ax.set_xlabel('Valeurs normalisées')
+    plt.title('Box Plot des top 5 features')
+    # Ajouter les marqueurs pour les valeurs du candidat sélectionné
+    for i, feature in enumerate(top_features):
+        ax.plot(scaled_data.iloc[selected_index, i], i, 'ro')  # Marqueur rouge pour la valeur du candidat sélectionné
+
+    st.pyplot(plt)  # Afficher le graphique dans Streamlit
+
 
 if __name__ == "__main__":
     render_title()
-    text_pres()
     data = load_data()
     data_woIndex = data.drop(columns=['SK_ID_CURR'])
     row_to_send = select_candidat()
     response = prediction(row_to_send)
-    #st.write("Response pour 0:" , response[0][0])
+    affich_predict(response)
+    # Obtenir l'index du candidat sélectionné
+    selected_index = data_woIndex[data_woIndex.eq(pd.Series(row_to_send)).all(axis=1)].index[0]
+    #st.write("selected_index :" , selected_index)
     #st.write("Response pour 1:" , response[0][1])
     #st.write("Response finale:" , response[1])
+
     shap_values = load('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/shap_values.joblib')
-    shap_values_tree = load('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/shap_values_Tree.joblib')
-    
-    col1, col2 = st.columns((2,3))
+    shap_data = load('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/shap_data.joblib')
+
+    top_features = data_woIndex.columns[np.argsort(np.abs(shap_values.values).mean(0))][::-1][:5]
+
+    col1, col2 = st.columns((1,8))
     with col1:
-        st_shap(shap.summary_plot(shap_values, data_woIndex, plot_type="bar"), height=450)
+        affich_predict_proba(response)
     with col2:
-        st_shap(shap.plots.waterfall(shap_values[0]), height=400, width=1200)
+        st.markdown(
+            f"<h4 style='font-weight: normal; font-size: 24px;'>Force Plot :</h4>", 
+            unsafe_allow_html=True
+        )
+        st.markdown(
+        "<p style='font-weight: normal; font-size: 16px;'>Le Force Plot est un outil de visualisation qui permet de comprendre l'impact de chaque feature sur la prédiction du modèle. Chaque barre horizontale représente la contribution de la feature correspondante à la prédiction. Les features à droite diminuent la prédiction, tandis que celles à gauche l'augmentent.</p>",
+        unsafe_allow_html=True
+        )
+        st_shap(shap.force_plot(shap_data['expected_value'], shap_data['shap_values'][selected_index,:], data_woIndex.iloc[selected_index,:]), height=200, width=1800) 
+    
+    col1, col2 = st.columns((2.8,2))
+    with col1:
+        #st.markdown("<br>", unsafe_allow_html=True)
+        #st_shap(shap.summary_plot(shap_values, data_woIndex, plot_type="bar"), height=450)
+        st.markdown(
+            f"<h4 style='font-weight: normal; font-size: 24px;'>Waterfall Plot :</h4>", 
+            unsafe_allow_html=True
+        )
+        st.markdown(
+        "<p style='font-weight: normal; font-size: 16px;'>Le Waterfall Plot est une autre forme de visualisation du Force Plot ci-dessus.</p>",
+        unsafe_allow_html=True
+        )
+        st_shap(shap.plots.waterfall(shap_values[selected_index]), height=400, width=1200)
+    with col2:
+        st.markdown(
+            f"<h4 style='font-weight: normal; font-size: 24px;'>Decision Plot :</h4>", 
+            unsafe_allow_html=True
+        )
+        st.markdown(
+        "<p style='font-weight: normal; font-size: 16px;'>Le decision plot illustre graphiquement l'importance des différentes caractéristiques dans la prise de décision du modèle.</p>",
+        unsafe_allow_html=True
+        )
+        st_shap(shap.decision_plot(shap_data['expected_value'], shap_data['shap_values'][selected_index,:], feature_names=data_woIndex.columns.tolist()), height=600, width=900)
 
     col1, col2 = st.columns((2.5,2))
     with col1:
+        st.markdown(
+            f"<h4 style='font-weight: normal; font-size: 24px;'>Graphique des barres SHAP :</h4>", 
+            unsafe_allow_html=True
+        )
+        st.markdown(
+        "<p style='font-weight: normal; font-size: 16px;'>"
+        "Le graphique des barres SHAP (SHAP bar plot) montre les features les plus importantes dans la prédiction du modèle. Chaque barre représente la valeur SHAP moyenne pour une feature donnée."
+        "</p>",
+        unsafe_allow_html=True
+        )
         st_shap(shap.plots.bar(shap_values), height=300, width = 1100)
     with col2:
+        st.markdown(
+            f"<h4 style='font-weight: normal; font-size: 24px;'>Graphique en essaim SHAP :</h4>", 
+            unsafe_allow_html=True
+        )
+        st.markdown(
+        "<p style='font-weight: normal; font-size: 16px;'>"
+        "Ce graphique (SHAP beeswarm plot) permet de visualiser l'effet de chaque feature sur la prédiction du modèle pour chaque instance de données, ainsi que la distribution des valeurs SHAP pour chaque feature."
+        "</p>",
+        unsafe_allow_html=True
+        )
         st_shap(shap.plots.beeswarm(shap_values), height=300, width = 900)
 
-    best_model = load('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/model_best_LGBM.sav')
-    explainer = shap.TreeExplainer(best_model)
-    shap_values = explainer.shap_values(data_woIndex)
-
-    st_shap(shap.force_plot(explainer.expected_value, shap_values[0,:], data_woIndex.iloc[0,:]), height=200, width=1800)    
-    st_shap(shap.force_plot(explainer.expected_value, shap_values[:50,:], data_woIndex.iloc[:50,:]), height=400, width=1800)
-
-    col1, col2, col3 = st.columns((1,2,6))
+    col1, col2 = st.columns(2)    
     with col1:
-       affich_predict_proba(response)
-    with col2:
-        pie_chart(response)
+        st.markdown(
+            f"<h4 style='font-weight: normal; font-size: 24px;'>Boites à moustaches des top 5 features :</h4>", 
+            unsafe_allow_html=True
+        )
+        st.markdown(
+        "<p style='font-weight: normal; font-size: 16px;'>"
+        "Le box plot des top 5 features représente la distribution des valeurs normalisées de ces variables. Chaque ligne représente une variable, et la boîte indique le quartile de la distribution. Les points rouges représentent les valeurs du candidat sélectionné."
+        "</p>",
+        unsafe_allow_html=True
+        )
+        box_plot(top_features, selected_index)
 
-    
 
 
 
-
-
-
-
-
-#prediction = best_model.predict_proba(row_to_send)[:,1]*100
-#prediction = np.round(prediction, 2)
-
-#prediction_value = prediction[0]
-
-#st.metric(label="Probabilité de non remboursement :", value=f"{prediction_value} %")
-
-# Expliquez les prédictions du meilleur modele
-#explainer = shap.Explainer(best_model)
-#data_woIndex = data.drop(columns=['SK_ID_CURR'])
-#shap_values = explainer(data_woIndex)
-
-# Calculer la moyenne absolue des SHAP values pour chaque variable
-#mean_shap_values = np.abs(shap_values.values).mean(axis=0)
-
-# Recuperer les noms des variables
-#feature_names = data_woIndex.columns
-
-# Trier par valeur de SHAP values
-#sorted_indices = np.argsort(-mean_shap_values)
-#sorted_indices = sorted_indices[::-1]  # Invert the order to have the largest values first
-#sorted_feature_names = feature_names[sorted_indices]
-#sorted_mean_shap_values = mean_shap_values[sorted_indices]
-
-# Preparer le bar chart horizontal
-#plt.figure(figsize=(4, 2))
-#plt.barh(sorted_feature_names[len(sorted_feature_names)-20:], sorted_mean_shap_values[len(sorted_feature_names)-20:], height=0.7, edgecolor='black', linewidth=0.1)
-
-# Ajuster la largeur de la bordure autour du graphique
-#for spine in plt.gca().spines.values():
-#    spine.set_linewidth(0.5)
-
-#plt.xlabel('Valeur absolue des SHAP Values', fontsize=5)  # Ajuster la taille de la police pour l'axe des x
-#plt.ylabel('Variables', fontsize=5)  # Ajuster la taille de la police pour l'axe des y
-#plt.title('Importance des variables basée sur la SHAP value', fontsize=6)  # Ajuster la taille de la police pour le titre
-#plt.yticks(fontsize=4)
-#plt.xticks(fontsize=4)
-#plt.tight_layout(pad=0.1)
-
-# Afficher le bar chart horizontal
-#col1, col2 = st.columns((1,2))
-#st.set_option('deprecation.showPyplotGlobalUse', False)
-#with col1:
-#    st.pyplot()
-
-#with col2:
-#    st.write(df)
-
-# Créer un graphique shap.force_plot
-#shap.initjs()
-#force_plot_html = shap.force_plot(shap_values.base_values[0], shap_values.values[0], df).html()
-
-# Convertir le graphique en HTML
-#force_plot_html = force_plot.html()
-
-# Afficher le HTML dans Streamlit
-
-    #st.write(force_plot_html, unsafe_allow_html=True)  # Pour HTML
-
+     
