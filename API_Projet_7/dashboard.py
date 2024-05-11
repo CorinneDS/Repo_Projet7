@@ -49,7 +49,7 @@ def select_candidat():
 
 # Appel a l'API pour obtenir la prédiction
 def prediction(row):
-    prediction_url = 'http://127.0.0.1:5000/prediction'
+    prediction_url = 'http://127.0.0.1:5000/prediction' # a remplacer avec nouvelle adresse AWS
     # Envoyer une requête POST à l'API avec les données JSON dans le corps de la requête
     response = requests.post(prediction_url, json=row)
     response_data = json.loads(response.text)
