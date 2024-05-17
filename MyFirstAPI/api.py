@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from joblib import load
 import pandas as pd
+import os
 
 app = Flask(__name__)
 
@@ -27,7 +28,9 @@ def prediction():
     row_data = request.get_json()
 
     # Charger le modèle depuis le fichier Joblib
-    best_model = load('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/model_best_LGBM.sav')
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    model_path = os.path.join(base_dir, 'model_best_LGBM.sav')
+    best_model = load(model_path)
 
     # Vérifier si row_data est un dictionnaire
     if isinstance(row_data, dict):
