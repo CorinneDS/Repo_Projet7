@@ -22,12 +22,12 @@ def render_title() -> None:
             unsafe_allow_html=True
         )
     with col2:
-        st.image('Logo_projet7.jpg', width=150)
+        st.image('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/dashboard-public/Logo_projet7.jpg', width=150)
 
 
 # Chargement des données
 def load_data():
-    data = pd.read_csv('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/X_test50_withIndex.csv')
+    data = pd.read_csv('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/dashboard-public/X_test50_withIndex.csv')
 
     # Convertir les ID clients en entiers
     data['SK_ID_CURR'] = data['SK_ID_CURR'].astype(int)
@@ -35,7 +35,7 @@ def load_data():
 
 # Chargement du glossaire des principales features
 def load_glossaire():
-    glossaire = pd.read_excel('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/Glossaire.xlsx', index_col=None)
+    glossaire = pd.read_excel('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/dashboard-public/Glossaire.xlsx', index_col=None)
     return glossaire
 
 # Selection du candidat dans liste deroulante et formattage attendu par API
@@ -126,8 +126,8 @@ if __name__ == "__main__":
     # Obtenir l'index du candidat sélectionné
     selected_index = data_woIndex[data_woIndex.eq(pd.Series(row_to_send)).all(axis=1)].index[0]
 
-    shap_values = load('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/shap_values.joblib')
-    shap_data = load('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/shap_data.joblib')
+    shap_values = load('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/dashboard-public/shap_values.joblib')
+    shap_data = load('/Users/corinnedumairir/Documents/Data Scientist/PYTHON/API_Projet_7/dashboard-public/shap_data.joblib')
 
     top_features = data_woIndex.columns[np.argsort(np.abs(shap_values.values).mean(0))][::-1][:5]
 
